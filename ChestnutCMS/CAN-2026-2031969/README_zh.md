@@ -100,7 +100,7 @@ if (Objects.nonNull(fieldValue)) {
 
 1. 以管理员登录后台 → **「互动运营 → 自定义表单」**；
 2. 新建一个自定义表单，并为其新增一个**富文本（UEditor）类型**字段（如字段 code 记为 `content`）；
-3. 该表单的 `formId`即为利用所需参数（如 `formId=1`）。
+3. 该表单的 `formId` 即为利用所需参数（如 `formId=1`）。
 4. 保持表单「是否需要登录」「是否启用验证码」为**默认关闭**状态即可快速复现。
 
 > 表单发布后本就会作为问卷对外暴露，`formId` 属正常可获取信息，攻击门槛极低。
@@ -138,7 +138,7 @@ curl -X POST 'http://target/api/customform/submit' \
 - [ ] **步骤 2**：执行 PoC 提交恶意载荷，接口返回 `code:200`
 - [ ] **步骤 3**：管理员后台查看该富文本字段，XSS 触发（弹窗 / 外带请求命中）
 
-<video src="chestnutCMS_XSS_CAN-2026-2031969.mp4"></video>
+https://github.com/user-attachments/assets/da3b6a8b-f4ff-40e0-851f-69a35dc73944
 
 ---
 

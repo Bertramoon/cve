@@ -100,7 +100,7 @@ if (Objects.nonNull(fieldValue)) {
 
 1. Log in to the backend as administrator → **"Interactive Operations (互动运营) → Custom Form (自定义表单)"**;
 2. Create a new custom form and add a **rich-text (UEditor)** field to it (e.g., with field code `content`);
-3. The form's `formId` (auto-increment primary key) is the parameter needed for exploitation (e.g., `formId=1`).
+3. The form's `formId` is the parameter needed for exploitation (e.g., `formId=1`).
 4. Keep "require login" and "enable CAPTCHA" in their **default disabled** state to quickly reproduce.
 
 > Once published, the form is exposed externally as a questionnaire, so `formId` is normally obtainable information and the exploitation barrier is very low.
@@ -138,7 +138,7 @@ curl -X POST 'http://target/api/customform/submit' \
 - [ ] **Step 2**: Run the PoC to submit the malicious payload; the endpoint returns `code:200`
 - [ ] **Step 3**: An administrator views the rich-text field in the backend, and XSS triggers (popup / exfiltration request hits)
 
-<video src="chestnutCMS_XSS_CAN-2026-2031969.mp4"></video>
+https://github.com/user-attachments/assets/da3b6a8b-f4ff-40e0-851f-69a35dc73944
 
 ---
 
