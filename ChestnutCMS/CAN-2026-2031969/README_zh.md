@@ -163,5 +163,6 @@ https://github.com/user-attachments/assets/da3b6a8b-f4ff-40e0-851f-69a35dc73944
 
 ## 八、参考
 
+- ChestnutCMS项目地址：https://github.com/liweiyi/ChestnutCMS
 - 完整 PoC 脚本：[`poc_customform_xss.py`](./poc_customform_xss.py)
 - CWE-79：Improper Neutralization of Input During Web Page Generation — https://cwe.mitre.org/data/definitions/79.html
